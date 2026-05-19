@@ -9,31 +9,27 @@ pool:
 
 variables:
   modulePath: 'projet1-main'
-  acrLoginServer: 'acrmuseevirtuel.azurecr.io'
-  acrUsername: 'acrmuseevirtuel'
+  acrLoginServer: 'acrabraredevops.azurecr.io'
+  acrUsername: 'acrabraredevops'
   imageName: 'projet1'
   imageTag: '$(Build.BuildId)'
   namespace: 'springapp-prod'
 
 steps:
-# ---- Etape 0 : Checkout ----
 - checkout: self
   displayName: 'Checkout code'
 
-# ---- Etape 1 : Tests unitaires ----
 - script: |
     cd $(modulePath)
     mvn test
   displayName: 'CI - Run Unit Tests'
   continueOnError: false
 
-# ---- Etape 2 : Build Maven ----
 - script: |
     cd $(modulePath)
     mvn clean package -DskipTests
   displayName: 'CI - Build Spring Boot'
 
-# ---- Etape 3 : SonarQube ----
 - script: |
     cd $(modulePath)
     mvn sonar:sonar \
@@ -44,13 +40,11 @@ steps:
   displayName: 'CI - SonarQube Analysis'
   continueOnError: true
 
-# ---- Etape 4 : Login ACR ----
 - script: |
     echo $(ACR_PASSWORD) | docker login $(acrLoginServer) \
       -u $(acrUsername) --password-stdin
   displayName: 'CI - Login to ACR'
 
-# ---- Etape 5 : Build Docker Image ----
 - script: |
     docker build \
       -t $(acrLoginServer)/$(imageName):$(imageTag) \
@@ -58,20 +52,17 @@ steps:
       $(modulePath)
   displayName: 'CI - Build Docker Image'
 
-# ---- Etape 6 : Push Docker Image to ACR ----
 - script: |
     docker push $(acrLoginServer)/$(imageName):$(imageTag)
     docker push $(acrLoginServer)/$(imageName):latest
   displayName: 'CI - Push Docker Image to ACR'
 
-# ---- Etape 7 : Load image into Minikube ----
 - script: |
-    minikube image load $(acrLoginServer)/$(imageName):$(imageTag)
+    minikube image load $(acrLoginServer)/$(imageName):$(imageTag) --profile azure-projet
     echo "Image loaded into Minikube successfully"
-    minikube image ls | grep $(imageName)
+    minikube image ls --profile azure-projet | grep $(imageName)
   displayName: 'CI - Load Image into Minikube'
 
-# ---- Etape 8 : Deploy with Helm ----
 - script: |
     helm upgrade --install springapp ./helm/springapp \
       --namespace $(namespace) \
@@ -82,7 +73,6 @@ steps:
       --timeout 8m
   displayName: 'CD - Deploy to Kubernetes'
 
-# ---- Etape 9 : Verify Deployment ----
 - script: |
     kubectl rollout status deployment/springapp-deployment \
       -n $(namespace) --timeout=300s
@@ -94,7 +84,6 @@ steps:
     kubectl get hpa -n $(namespace)
   displayName: 'CD - Verify Deployment'
 
-# ---- Etape 10 : Health Check ----
 - script: |
     sleep 30
     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://springapp.local)
