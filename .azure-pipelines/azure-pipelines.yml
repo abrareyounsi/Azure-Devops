@@ -32,7 +32,7 @@ steps:
 
 - script: |
     cd $(modulePath)
-    mvn sonar:sonar \
+    mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar \
       -Dsonar.projectKey=musee-virtuel \
       -Dsonar.projectName='Musee Virtuel' \
       -Dsonar.host.url=http://localhost:9000 \
