@@ -17,3 +17,6 @@ target/
 *.env
 target/
 *.jar
+dist/
+node_modules/
+*.class
